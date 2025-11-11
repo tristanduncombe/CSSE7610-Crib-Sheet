@@ -130,7 +130,7 @@
     #set text(8pt)
     $not eventually A equiv always not A$
   ]
-
+  
   #inline("Compound Temporal Operators")
   
   #image("Compound Temporal Operators 1.png")
@@ -139,7 +139,7 @@
     #set text(8pt)
     $eventually always A$
   ]
-  
+
   #image("Compound Temporal Operators 2.png")
   #v(-10pt)
   #align(center)[
@@ -180,11 +180,11 @@
   - S.L which is a *set* of processes, initially $emptyset$
 
   _a semaphore has the following *atomic* statements_:
-  #image("Semaphore Def.png")
+  #image("Semaphore Def.png", width: 70%)
 
   #inline("Binary Semaphore")
   A binary semaphore makes some minimal changes to signal:
-  #image("Binary Semaphore.png")
+  #image("Binary Semaphore.png", width: 70%)
   #image("Binary Semaphore Example.png")
 
   #inline("Semaphore Invariants")
@@ -197,18 +197,133 @@
 
   #inline("Strong Semaphores")
   *Strong semaphores* replace the set S.L with a *queue*.
-  #image("Strong Semaphore.png")
+  #image("Strong Semaphore.png", width: 50%)
 
   #inline("Busy-wait Semaphores")
   No S.L component, so we let S = S.V
-  #image("Busy-Wait Semaphore.png")
+  #image("Busy-Wait Semaphore.png", width: 30%)
 
   #inline("Split Semaphores")
   A *split semaphore* is the use of two or more semaphores whose sum is at most equal to a fixed number N.
   - nonEmpty + notFull <= N
+
+  #inline("Dining Philosophers")
+  #image("Room Semaphore Philosophers.png")
+  #image("Asymetric Philosophers.png")
+])
+
+= Monitors
+#concept-block(body: [
+  Monitors can only be entered by a single process. That is to say, they are atomic.
+  This is effectively the same as inserting a wait(S) and signal(S) semaphore at the start and end of all monitor functions, for some monitor-wide semaphore.
+
+  A *condition variable* is a FIFO queue used to store processes waiting for a particular condition to become true.
+  - Ordinary boolean expressions are used to test the condition, blocking a process when necessary.
+  - A separate statement is used to unblock a process when the condition becomes true.
+
+  #inline("Semaphore Simulated with a Monitor")
+  #image("Semaphore Simulated with Monitor.png") 
+  #image("Operations on Condition Variables.png") 
+
+  #inline("Immediate Resumption Requirement (IRR)")
+  On signalling, a waiting process, W, has resumption priority over a signalling process, S, which has priority over a process waiting to enter, E. That is E < S < W.
+
+  *NOTE*: In Java this is E = W < S.
+  #image("Monitor Variants.png")
+
+  #inline("Java Synchronized")
+  A synchronised method requires the thread to acquire a lock before executing it - in the case of an instance method, the lock is on the object; in the case of a static method, the lock is on the class.
+
+  e.g. 
+  #image("Synchronized Methods.png")
+  #image("Monitor Locks.png")
+
+  A class all of whose methods are *synchronised* can be called a Java monitor.
+  `.wait()` is similar to waitC and `.notify()` to signalC(), but waiting is not with respect to a specific condition. Hence, the condition must be rechecked explicitly or else resume waiting.
+  
+])
+
+= Spinlocks
+
+#concept-block(body: [
+  #inline("Spinning vs Blocking")
+
+  Mutual exclusion protocols need to answer the question: what do you do if you can't acquire the lock
+
+  Two alternative:
+    + Repeatedly test the lock. This is called spinning (or busy-waiting). The lock is called a spin lock.
+      - sensible when you expect lock delay to be short
+      - sensible only on multiprocessor systems
+    + Block.
+      - sensible only when lock delay is expected to be long (since context switching is expensive)
+
+  Many operating systems use a combination of these approaches - spin for a short time, and then block
+
+  Compilers reorder instructions to enhance performance - most programming languages preserve program order for each individual variable, but not across multiple variables.
+
+  To ensure program order, when necessary, programmers need to use a memory barrier (or memory fence) to force outstanding writes to take effect.
+
+  Barriers:
+  - are implicitly included in reads and writes to volatile variables
+  - are implicitly included in atomic primitives (e.g. test-and-set, compare-and-swap).
+
+  But these barriers are expensive! We want to minimise their use.
+
+  Hence, traditional solutions to mutual exclusion such as Dekker's do not perform well - we would need to fence all of the get and set operations, which would waste (precious) CPU cycles.
+
+  #inline("Test-And-Set Lock")
+
+  ```java
+  public class TASLock implements Lock {
+    AtomicBoolean state = new AtomicBoolean(false);
+
+    public void lock() {
+      while (state.getAndSet(true)) {}
+    }
+
+    public void unlock() {
+      state.set(false)
+    }
+  ```
+
+  #inline("Test-And-Test-And_set Lock")
+
+  ```java
+  public class TTASLock implements Lock {
+    AtomicBoolean state = new AtomicBoolean(false);
+
+    public void lock() {
+      while (true) {
+        while (state.get()) {}
+        if (!state.getAndSet(true)) {
+          return;
+        }
+      }
+    }
+
+    public void unlock() {
+      state.set(false);
+    }
+  }
+  ```
+  
+  #align(center)[
+  #image("taslock and ttaslock.png", width: 50%)
+  ]
+  #inline("Cache Coherence")
+  Typically processors communicate by a shared broadcast medium called a bus.
+
+  Only one processor can broadcast on the bus at a time.
+
+  Each processor has a cache — a small high-speed memory.
+
+  When a processor needs to read a variable, it checks whether it is in its cache:
+  - if so, the processor has a cache hit and reads the value from the cache!
+  - if not, the processor has a cache miss and must find the value in the main memory, or another processor’s cache
 ])
 
 = Linked Lists
+
 
 #concept-block(body: [
   #inline("Types of Synchronisation")
@@ -480,4 +595,19 @@ The algorithms (RA) (RAT)
   #image("Dekker3.png")
   #image("Dekker4.png")
   #image("Dekker5.png")
+])
+
+== Producer Consumer
+#concept-block(body: [
+  #image("Producer Consumer Code.png")
+  #image("Producer Consumer State Diagram.png")
+])
+
+== Monitor Read/Write Proofs
+#concept-block(body: [
+ #image("Proofs.png") 
+ #image("Monitor Proof Startread.png")
+ #image("Monitor Proof EndRead.png")
+ #image("Monitor Proof StartWrite.png")
+ #image("Monitor Proof EndWrite.png")
 ])
